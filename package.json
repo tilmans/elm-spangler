@@ -1,0 +1,8 @@
+{
+	"scripts":{
+		"start":"elm-live --dir=static --output=static/index.html --debug src/Main.elm"
+	},
+  "devDependencies": {
+    "elm-live": "^3.0.1"
+  }
+}
