@@ -1,8 +1,2 @@
-# elm-processing
-Simple processing like elm library. Make it easy to start with creative coding.
-
-## Get started
-
-	yarn
-	yarn start
-
+# elm-spangler
+This is an Elm implementation based on [Spangler](https://github.com/smurp/spangler_js/)
