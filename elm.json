@@ -12,7 +12,8 @@
             "elm/svg": "1.0.1",
             "elm-explorations/linear-algebra": "1.0.3",
             "elm-explorations/webgl": "1.0.1",
-            "joakin/elm-canvas": "2.1.1"
+            "joakin/elm-canvas": "2.1.1",
+            "mdgriffith/elm-ui": "1.0.0"
         },
         "indirect": {
             "elm/json": "1.0.0",

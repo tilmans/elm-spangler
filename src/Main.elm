@@ -1,9 +1,13 @@
 module Main exposing (main)
 
+import Array
 import Browser
+import Element exposing (..)
+import Element.Background as Background
+import Element.Border as Border
+import Element.Input as Input
+import Fractal
 import Html
-import Svg exposing (..)
-import Svg.Attributes exposing (..)
 
 
 type alias Flags =
@@ -18,15 +22,30 @@ type alias Model =
 
 
 type Msg
-    = NoOp
+    = SetPoints Float
+    | SetRepeat Int Float
 
 
 init flags =
     ( Model 1 5 [ 5, 4 ], Cmd.none )
 
 
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    ( model, Cmd.none )
+    case msg of
+        SetPoints p ->
+            ( { model | points = floor p }, Cmd.none )
+
+        SetRepeat position value ->
+            ( { model
+                | repeats =
+                    model.repeats
+                        |> Array.fromList
+                        |> Array.set position (floor value)
+                        |> Array.toList
+              }
+            , Cmd.none
+            )
 
 
 subscriptions model =
@@ -34,79 +53,40 @@ subscriptions model =
 
 
 view model =
-    let
-        scale =
-            100
-
-        segments =
-            2 * pi / toFloat model.points
-
-        lines =
-            List.range 0 (model.points - 1)
-                |> List.map toFloat
-                |> List.map (\m -> ( cos ((segments * (-1 * m)) + pi / 2), sin ((segments * (-1 * m)) + pi / 2) ))
-                |> List.reverse
-                |> (::) ( 0, 1 )
-                |> List.map (\( x, y ) -> ( x * scale, y * scale * -1 ))
-                |> List.foldr
-                    (\( x, y ) accum ->
-                        case accum.previous of
-                            Nothing ->
-                                let
-                                    _ =
-                                        Debug.log "Start" ( x, y )
-                                in
-                                { previous = Just ( x, y ), lines = accum.lines }
-
-                            Just ( x_, y_ ) ->
-                                let
-                                    _ =
-                                        Debug.log "Next" ( x, y )
-                                in
-                                { previous = Just ( x, y ), lines = drawLine x_ y_ x y :: accum.lines }
-                    )
-                    { previous = Nothing, lines = [] }
-
-        items =
-            List.foldl (\c svg -> groupItems c scale svg) lines.lines model.repeats
-
-        pp =
-            Debug.log "Point1" (pointOnCircle 3 0)
-
-        _ =
-            Debug.log "Points"
-                (Debug.toString
-                    (List.range 0 2
-                        --|> List.map toFloat
-                        |> List.map (pointOnCircle 3)
-                        |> List.map (\( x, y ) -> ( x * scale, y * scale ))
-                    )
+    Element.layout []
+        (row []
+            [ column [ width (px 500) ] [ html (Fractal.draw model.points model.repeats) ]
+            , column []
+                (Input.slider []
+                    { onChange = SetPoints
+                    , label = Input.labelAbove [] (text "Number of Points")
+                    , min = 3
+                    , max = 15
+                    , step = Just 1
+                    , value = toFloat model.points
+                    , thumb = Input.defaultThumb
+                    }
+                    :: List.indexedMap
+                        (\i r ->
+                            let
+                                msg : Float -> Msg
+                                msg =
+                                    SetRepeat i
+                            in
+                            Input.slider []
+                                { onChange = msg
+                                , label = Input.labelAbove [] (text ("Repeat " ++ String.fromInt i))
+                                , min = 1
+                                , max = 15
+                                , step = Just 1
+                                , value = toFloat r
+                                , thumb = Input.defaultThumb
+                                }
+                        )
+                        model.repeats
                 )
-    in
-    svg [ width "500", height "500", viewBox "-105 -105 210 210" ]
-        (circle [ x "0", y "0", r "100", stroke "none", fill "none" ] [] :: items)
-
-
-groupItems : Int -> Float -> List (Svg msg) -> List (Svg msg)
-groupItems count scale items =
-    List.range 0 (count - 1)
-        --|> List.map toFloat
-        |> List.map (pointOnCircle count)
-        |> List.map (\( x, y ) -> ( x * scale, y * scale ))
-        |> List.map (\( x, y ) -> g [ transform ("scale(0.5 0.5) translate(" ++ String.fromFloat x ++ "," ++ String.fromFloat y ++ ")") ] items)
-
-
-pointOnCircle : Int -> Int -> ( Float, Float )
-pointOnCircle total index =
-    let
-        radius =
-            2 * pi / toFloat total * toFloat index - pi / 2
-    in
-    Debug.log "Point" ( cos radius, sin radius )
-
-
-drawLine x1_ y1_ x2_ y2_ =
-    line [ x1 (String.fromFloat x1_), y1 (String.fromFloat y1_), x2 (String.fromFloat x2_), y2 (String.fromFloat y2_), stroke "black" ] []
+            ]
+        )
 
 
 main : Program Flags Model Msg
