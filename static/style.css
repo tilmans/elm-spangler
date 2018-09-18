@@ -1,0 +1,66 @@
+html,body {
+	padding: 0;
+	margin: 0;
+	width: 100%;
+	height: 100%;
+}
+
+.controls-container {
+	position: fixed;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	right: 0;
+	overflow: auto;
+	display: flex;
+	justify-content: center;
+	align-items: flex-end;
+}
+
+.controls {
+	margin-bottom: 30px;
+	display: flex;
+}
+
+.active-control {
+	width: 35px;
+	height: 45px;
+	margin: 5px;
+	background: lightgrey;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.passive-control {
+	width: 35px;
+	height: 45px;
+	margin: 5px;
+	background: grey;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.control-text {
+	font-family: "Helvetica";
+	font-size: 25pt
+}
+
+.main {
+}
+
+.fractal-container {
+	position: fixed;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	right: 0;
+	overflow: auto;
+	display: flex;		
+	justify-content: center;
+	align-items: center;
+}
+
+.fractal {
+}
