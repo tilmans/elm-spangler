@@ -4,23 +4,11 @@ import Array
 import Browser
 import Browser.Events
 import Browser.Navigation
-import Css exposing (..)
 import Fractal
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Json.Decode as Decode
 import Url exposing (Url)
-
-
-type alias Flags =
-    {}
-
-
-type ActiveItem
-    = Steps
-    | Points
-    | Repeat Int
-    | New
 
 
 type alias Model =
@@ -40,6 +28,17 @@ type Msg
     | UrlRequest
 
 
+type alias Flags =
+    {}
+
+
+type ActiveItem
+    = Steps
+    | Points
+    | Repeat Int
+    | New
+
+
 type Key
     = Left
     | Right
@@ -48,23 +47,11 @@ type Key
     | Other
 
 
-toKey : String -> Key
-toKey string =
-    case string of
-        "ArrowLeft" ->
-            Left
-
-        "ArrowRight" ->
-            Right
-
-        "ArrowUp" ->
-            Up
-
-        "ArrowDown" ->
-            Down
-
-        _ ->
-            Other
+type alias UrlParameters =
+    { steps : Int
+    , points : Int
+    , repeats : Array.Array Int
+    }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -225,33 +212,9 @@ update msg model =
             ( newModel, setURL newModel )
 
 
-setURL : Model -> Cmd msg
-setURL model =
-    Browser.Navigation.replaceUrl model.key ("#" ++ stringForParams model)
-
-
-incrementWithLimit value =
-    if value < 99 then
-        value + 1
-
-    else
-        value
-
-
-decrementWithLimit value =
-    if value > 1 then
-        value - 1
-
-    else
-        value
-
-
+subscriptions : Model -> Sub Msg
 subscriptions model =
     Browser.Events.onKeyDown (Decode.map KeyEvent (Decode.map toKey keyDecoder))
-
-
-keyDecoder =
-    Decode.field "key" Decode.string
 
 
 view : Model -> Browser.Document Msg
@@ -270,29 +233,26 @@ view model =
     }
 
 
-stringForParams model =
-    String.fromInt model.steps
-        ++ ","
-        ++ String.fromInt model.points
-        ++ Array.foldl (\i a -> a ++ "," ++ String.fromInt i) "" model.repeats
+main : Program Flags Model Msg
+main =
+    Browser.application
+        { init =
+            \flags url key ->
+                let
+                    params =
+                        parametersFromUrl url
+                in
+                ( Model key params.steps params.points params.repeats Steps, Cmd.none )
+        , view = view
+        , update = update
+        , subscriptions = subscriptions
+        , onUrlRequest = \url -> UrlRequest
+        , onUrlChange = \url -> UrlChange url
+        }
 
 
-inputControls model =
-    [ control (model.active == Steps) (Just model.steps)
-    , control (model.active == Points) (Just model.points)
-    ]
-        ++ List.indexedMap (\index value -> control (valueIsRepeat model.active index) (Just value)) (Array.toList model.repeats)
-        ++ [ control (model.active == New) Nothing ]
 
-
-valueIsRepeat : ActiveItem -> Int -> Bool
-valueIsRepeat expected current =
-    case expected of
-        Repeat index ->
-            index == current
-
-        _ ->
-            False
+-- UI Functions
 
 
 control : Bool -> Maybe Int -> Html Msg
@@ -317,6 +277,82 @@ control active value =
         ]
 
 
+inputControls : Model -> List (Html Msg)
+inputControls model =
+    [ control (model.active == Steps) (Just model.steps)
+    , control (model.active == Points) (Just model.points)
+    ]
+        ++ List.indexedMap (\index value -> control (valueIsRepeat model.active index) (Just value)) (Array.toList model.repeats)
+        ++ [ control (model.active == New) Nothing ]
+
+
+
+-- Utilities
+
+
+keyDecoder =
+    Decode.field "key" Decode.string
+
+
+toKey : String -> Key
+toKey string =
+    case string of
+        "ArrowLeft" ->
+            Left
+
+        "ArrowRight" ->
+            Right
+
+        "ArrowUp" ->
+            Up
+
+        "ArrowDown" ->
+            Down
+
+        _ ->
+            Other
+
+
+setURL : Model -> Cmd msg
+setURL model =
+    Browser.Navigation.replaceUrl model.key ("#" ++ stringForParams model)
+
+
+incrementWithLimit value =
+    if value < 99 then
+        value + 1
+
+    else
+        value
+
+
+decrementWithLimit value =
+    if value > 1 then
+        value - 1
+
+    else
+        value
+
+
+valueIsRepeat : ActiveItem -> Int -> Bool
+valueIsRepeat expected current =
+    case expected of
+        Repeat index ->
+            index == current
+
+        _ ->
+            False
+
+
+stringForParams : Model -> String
+stringForParams model =
+    String.fromInt model.steps
+        ++ ","
+        ++ String.fromInt model.points
+        ++ Array.foldl (\i a -> a ++ "," ++ String.fromInt i) "" model.repeats
+
+
+parametersFromUrl : Url -> UrlParameters
 parametersFromUrl url =
     case url.fragment of
         Nothing ->
@@ -338,21 +374,3 @@ parametersFromUrl url =
                         |> Array.map (String.toInt >> Maybe.withDefault 1)
             in
             { steps = steps, points = points, repeats = repeats }
-
-
-main : Program Flags Model Msg
-main =
-    Browser.application
-        { init =
-            \flags url key ->
-                let
-                    params =
-                        parametersFromUrl url
-                in
-                ( Model key params.steps params.points params.repeats Steps, Cmd.none )
-        , view = view
-        , update = update
-        , subscriptions = subscriptions
-        , onUrlRequest = \url -> UrlRequest
-        , onUrlChange = \url -> UrlChange url
-        }
