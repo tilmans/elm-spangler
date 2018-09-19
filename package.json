@@ -1,9 +1,10 @@
 {
-	"scripts":{
-		"start":"elm-live --dir=docs --output=docs/index.js --debug src/Main.elm",
-		"build":"elm make --optimize --output=docs/index.js src/Main.elm"
+	"scripts": {
+		"start": "elm-live --dir=docs --output=docs/index.js --debug src/Main.elm",
+		"build": "elm make --optimize --output=docs/index.js src/Main.elm && uglifyjs -o docs/index.js --compress --mangle -- docs/index.js"
 	},
-  "devDependencies": {
-    "elm-live": "^3.0.1"
-  }
+	"devDependencies": {
+		"elm-live": "^3.0.1",
+		"uglify-js": "^3.4.9"
+	}
 }
