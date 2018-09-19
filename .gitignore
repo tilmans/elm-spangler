@@ -1,4 +1,4 @@
 elm-stuff
 node_modules
-elm.js
-index.js
+static/elm.js
+static/index.js
