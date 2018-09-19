@@ -3,11 +3,13 @@ module Main exposing (main)
 import Array
 import Browser
 import Browser.Events
+import Browser.Navigation
 import Css exposing (..)
 import Fractal
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Json.Decode as Decode
+import Url exposing (Url)
 
 
 type alias Flags =
@@ -22,7 +24,8 @@ type ActiveItem
 
 
 type alias Model =
-    { steps : Int
+    { key : Browser.Navigation.Key
+    , steps : Int
     , points : Int
     , repeats : Array.Array Int
     , active : ActiveItem
@@ -33,6 +36,8 @@ type Msg
     = SetPoints Float
     | SetRepeat Int Float
     | KeyEvent Key
+    | UrlChange Url
+    | UrlRequest
 
 
 type Key
@@ -62,13 +67,19 @@ toKey string =
             Other
 
 
-init flags =
-    ( Model 1 5 (Array.fromList [ 5, 4 ]) Steps, Cmd.none )
-
-
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        UrlChange url ->
+            let
+                params =
+                    parametersFromUrl url
+            in
+            ( { model | steps = params.steps, points = params.points, repeats = params.repeats }, Cmd.none )
+
+        UrlRequest ->
+            ( model, Cmd.none )
+
         SetPoints p ->
             ( { model | points = floor p }, Cmd.none )
 
@@ -103,7 +114,11 @@ update msg model =
                                                 Points
 
                                         New ->
-                                            Repeat (Array.length model.repeats - 1)
+                                            if Array.length model.repeats == 0 then
+                                                Points
+
+                                            else
+                                                Repeat (Array.length model.repeats - 1)
                             }
 
                         Right ->
@@ -114,7 +129,11 @@ update msg model =
                                             Points
 
                                         Points ->
-                                            Repeat 0
+                                            if Array.length model.repeats == 0 then
+                                                New
+
+                                            else
+                                                Repeat 0
 
                                         Repeat pos ->
                                             if pos >= (Array.length model.repeats - 1) then
@@ -153,8 +172,11 @@ update msg model =
                                     in
                                     { model | repeats = new }
 
-                                _ ->
-                                    model
+                                New ->
+                                    { model
+                                        | repeats = Array.push 1 model.repeats
+                                        , active = Repeat (Array.length model.repeats)
+                                    }
 
                         Down ->
                             case model.active of
@@ -170,29 +192,46 @@ update msg model =
 
                                 Repeat index ->
                                     let
+                                        lastIndex =
+                                            Array.length model.repeats - 1
+
                                         current =
                                             Array.get index model.repeats
                                                 |> Maybe.withDefault 0
 
-                                        add =
-                                            decrementWithLimit current
+                                        ( newRepeat, newPosition ) =
+                                            if current < 2 && index == lastIndex then
+                                                ( Array.slice 0 lastIndex model.repeats
+                                                , if lastIndex - 1 >= 0 then
+                                                    Repeat (lastIndex - 1)
 
-                                        new =
-                                            Array.set index add model.repeats
+                                                  else
+                                                    Points
+                                                )
+
+                                            else
+                                                ( Array.set index (decrementWithLimit current) model.repeats
+                                                , Repeat index
+                                                )
                                     in
-                                    { model | repeats = new }
+                                    { model | repeats = newRepeat, active = newPosition }
 
-                                _ ->
+                                New ->
                                     model
 
                         _ ->
                             model
             in
-            ( newModel, Cmd.none )
+            ( newModel, setURL newModel )
+
+
+setURL : Model -> Cmd msg
+setURL model =
+    Browser.Navigation.replaceUrl model.key ("#" ++ stringForParams model)
 
 
 incrementWithLimit value =
-    if value < 9 then
+    if value < 99 then
         value + 1
 
     else
@@ -215,16 +254,27 @@ keyDecoder =
     Decode.field "key" Decode.string
 
 
-view : Model -> Html Msg
+view : Model -> Browser.Document Msg
 view model =
-    div [ class "main" ]
-        [ div [ class "controls-container" ]
-            [ div [ class "controls" ] (inputControls model)
-            ]
-        , div [ class "fractal-container" ]
-            [ div [ class "fractal" ] [ Fractal.draw model.points (Array.toList model.repeats) ]
+    { title = stringForParams model
+    , body =
+        [ div [ class "main" ]
+            [ div [ class "controls-container" ]
+                [ div [ class "controls" ] (inputControls model)
+                ]
+            , div [ class "fractal-container" ]
+                [ div [ class "fractal" ] [ Fractal.draw model.steps model.points (Array.toList model.repeats) ]
+                ]
             ]
         ]
+    }
+
+
+stringForParams model =
+    String.fromInt model.steps
+        ++ ","
+        ++ String.fromInt model.points
+        ++ Array.foldl (\i a -> a ++ "," ++ String.fromInt i) "" model.repeats
 
 
 inputControls model =
@@ -267,11 +317,42 @@ control active value =
         ]
 
 
+parametersFromUrl url =
+    case url.fragment of
+        Nothing ->
+            { steps = 1, points = 3, repeats = Array.fromList [] }
+
+        Just fragment ->
+            let
+                parts =
+                    Array.fromList <| String.split "," fragment
+
+                steps =
+                    Array.get 0 parts |> Maybe.withDefault "1" |> String.toInt |> Maybe.withDefault 1
+
+                points =
+                    Array.get 1 parts |> Maybe.withDefault "3" |> String.toInt |> Maybe.withDefault 3
+
+                repeats =
+                    Array.slice 2 (Array.length parts) parts
+                        |> Array.map (String.toInt >> Maybe.withDefault 1)
+            in
+            { steps = steps, points = points, repeats = repeats }
+
+
 main : Program Flags Model Msg
 main =
-    Browser.element
-        { init = init
+    Browser.application
+        { init =
+            \flags url key ->
+                let
+                    params =
+                        parametersFromUrl url
+                in
+                ( Model key params.steps params.points params.repeats Steps, Cmd.none )
         , view = view
         , update = update
         , subscriptions = subscriptions
+        , onUrlRequest = \url -> UrlRequest
+        , onUrlChange = \url -> UrlChange url
         }

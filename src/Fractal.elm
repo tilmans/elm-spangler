@@ -1,10 +1,11 @@
 module Fractal exposing (draw)
 
+import Array
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
 
 
-draw points repeats =
+draw step points repeats =
     let
         scale =
             100
@@ -17,32 +18,58 @@ draw points repeats =
                 |> List.map toFloat
                 |> List.map (\m -> ( cos ((segments * (-1 * m)) + pi / 2), sin ((segments * (-1 * m)) + pi / 2) ))
                 |> List.reverse
-                |> (::) ( 0, 1 )
                 |> List.map (\( x, y ) -> ( x * scale, y * scale * -1 ))
-                |> List.foldr
-                    (\( x, y ) accum ->
-                        case accum.previous of
-                            Nothing ->
-                                { previous = Just ( x, y ), lines = accum.lines }
-
-                            Just ( x_, y_ ) ->
-                                { previous = Just ( x, y ), lines = drawLine x_ y_ x y :: accum.lines }
-                    )
-                    { previous = Nothing, lines = [] }
+                |> drawPoints step
 
         items =
-            List.foldl (\c svg -> groupItems c scale svg) lines.lines repeats
+            List.foldl (\c svg -> groupItems c scale svg) lines repeats
     in
     svg [ width "500", height "500", viewBox "-105 -105 210 210" ]
         (circle [ x "0", y "0", r "100", stroke "none", fill "none" ] [] :: items)
 
 
+drawPoints : Int -> List ( Float, Float ) -> List (Svg msg)
+drawPoints step points =
+    let
+        arrayOfPoints =
+            Array.fromList points
+    in
+    List.indexedMap
+        (\i ( x1_, y1_ ) ->
+            let
+                ( x2_, y2_ ) =
+                    wrappingGet (i + step) arrayOfPoints
+            in
+            line [ x1 (String.fromFloat x1_), y1 (String.fromFloat y1_), x2 (String.fromFloat x2_), y2 (String.fromFloat y2_), stroke "black" ] []
+        )
+        points
+
+
+wrappingGet : Int -> Array.Array ( Float, Float ) -> ( Float, Float )
+wrappingGet position array =
+    Array.get
+        (modBy (Array.length array) position)
+        array
+        |> Maybe.withDefault ( 0, 0 )
+
+
 groupItems : Int -> Float -> List (Svg msg) -> List (Svg msg)
 groupItems count scale items =
     List.range 0 (count - 1)
-        |> List.map (pointOnCircle count)
-        |> List.map (\( x, y ) -> ( x * scale, y * scale ))
-        |> List.map (\( x, y ) -> g [ transform ("scale(0.5 0.5) translate(" ++ String.fromFloat x ++ "," ++ String.fromFloat y ++ ")") ] items)
+        |> List.map (\i -> ( i, 360 / toFloat count * toFloat i ))
+        |> List.map
+            (\( i, r ) ->
+                g
+                    [ transform
+                        ("scale(0.5 0.5) "
+                            ++ "translate(0 -100) "
+                            ++ "rotate("
+                            ++ String.fromFloat r
+                            ++ " 0 100)"
+                        )
+                    ]
+                    items
+            )
 
 
 pointOnCircle : Int -> Int -> ( Float, Float )
@@ -56,3 +83,16 @@ pointOnCircle total index =
 
 drawLine x1_ y1_ x2_ y2_ =
     line [ x1 (String.fromFloat x1_), y1 (String.fromFloat y1_), x2 (String.fromFloat x2_), y2 (String.fromFloat y2_), stroke "black" ] []
+
+
+pointsToString =
+    List.foldr
+        (\( x, y ) a ->
+            a
+                ++ "("
+                ++ String.fromFloat x
+                ++ ", "
+                ++ String.fromFloat y
+                ++ ") "
+        )
+        ""
