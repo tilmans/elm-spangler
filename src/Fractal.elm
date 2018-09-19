@@ -5,6 +5,7 @@ import Svg exposing (..)
 import Svg.Attributes exposing (..)
 
 
+draw : Int -> Int -> List Int -> Svg msg
 draw step points repeats =
     let
         scale =
@@ -81,10 +82,12 @@ pointOnCircle total index =
     ( cos radius, sin radius )
 
 
+drawLine : Float -> Float -> Float -> Float -> Svg msg
 drawLine x1_ y1_ x2_ y2_ =
     line [ x1 (String.fromFloat x1_), y1 (String.fromFloat y1_), x2 (String.fromFloat x2_), y2 (String.fromFloat y2_), stroke "black" ] []
 
 
+pointsToString : List ( Float, Float ) -> String
 pointsToString =
     List.foldr
         (\( x, y ) a ->
