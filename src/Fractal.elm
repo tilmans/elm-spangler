@@ -5,8 +5,8 @@ import Svg exposing (..)
 import Svg.Attributes exposing (..)
 
 
-draw : Int -> Int -> List Int -> Svg msg
-draw step points repeats =
+draw : Float -> Int -> Int -> Int -> List Int -> Svg msg
+draw time rotateOn step points repeats =
     let
         scale =
             100

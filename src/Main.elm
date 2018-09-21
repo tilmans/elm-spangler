@@ -17,6 +17,7 @@ type alias Model =
     , points : Int
     , repeats : Array.Array Int
     , active : ActiveItem
+    , time : Float
     }
 
 
@@ -26,6 +27,7 @@ type Msg
     | KeyEvent Key
     | UrlChange Url
     | UrlRequest
+    | Tick Float
 
 
 type alias Flags =
@@ -57,6 +59,9 @@ type alias UrlParameters =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        Tick delta ->
+            ( { model | time = model.time + delta }, Cmd.none )
+
         UrlChange url ->
             let
                 params =
@@ -214,7 +219,10 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Browser.Events.onKeyDown (Decode.map KeyEvent (Decode.map toKey keyDecoder))
+    Sub.batch
+        [ Browser.Events.onKeyDown (Decode.map KeyEvent (Decode.map toKey keyDecoder))
+        , Browser.Events.onAnimationFrameDelta Tick
+        ]
 
 
 view : Model -> Browser.Document Msg
@@ -226,7 +234,7 @@ view model =
                 [ div [ class "controls" ] (inputControls model)
                 ]
             , div [ class "fractal-container" ]
-                [ div [ class "fractal" ] [ Fractal.draw model.steps model.points (Array.toList model.repeats) ]
+                [ div [ class "fractal" ] [ Fractal.draw model.time 2 model.steps model.points (Array.toList model.repeats) ]
                 ]
             ]
         ]
@@ -242,7 +250,7 @@ main =
                     params =
                         parametersFromUrl url
                 in
-                ( Model key params.steps params.points params.repeats Steps, Cmd.none )
+                ( Model key params.steps params.points params.repeats Steps 0, Cmd.none )
         , view = view
         , update = update
         , subscriptions = subscriptions
