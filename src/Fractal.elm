@@ -1,12 +1,13 @@
 module Fractal exposing (draw)
 
 import Array
-import Svg exposing (..)
+import List.Extra
+import Svg exposing (Svg, circle, g, line, svg)
 import Svg.Attributes exposing (..)
 
 
-draw : Float -> List Int -> Int -> Int -> List Int -> Svg msg
-draw time animated step points repeats =
+draw : Float -> List Int -> Int -> Int -> List Int -> List String -> Svg msg
+draw time animated step points repeats colors =
     let
         scale =
             100
@@ -26,14 +27,21 @@ draw time animated step points repeats =
             List.foldl
                 (\c ( count, svg ) ->
                     let
-                        animOffset =
+                        rotation =
                             if List.member count animated then
                                 time / 10
 
                             else
                                 0
+
+                        colors_ =
+                            if count == 0 then
+                                colors
+
+                            else
+                                [ "default" ]
                     in
-                    ( count + 1, groupItems animOffset c scale svg )
+                    ( count + 1, groupItems rotation c colors_ scale svg )
                 )
                 ( 0, lines )
                 repeats
@@ -54,7 +62,15 @@ drawPoints step points =
                 ( x2_, y2_ ) =
                     wrappingGet (i + step) arrayOfPoints
             in
-            line [ x1 (String.fromFloat x1_), y1 (String.fromFloat y1_), x2 (String.fromFloat x2_), y2 (String.fromFloat y2_), stroke "black" ] []
+            line
+                [ x1 (String.fromFloat x1_)
+                , y1 (String.fromFloat y1_)
+                , x2 (String.fromFloat x2_)
+                , y2 (String.fromFloat y2_)
+
+                --, style "stroke: black;"
+                ]
+                []
         )
         points
 
@@ -67,14 +83,15 @@ wrappingGet position array =
         |> Maybe.withDefault ( 0, 0 )
 
 
-groupItems : Float -> Int -> Float -> List (Svg msg) -> List (Svg msg)
-groupItems rotation count scale items =
+groupItems : Float -> Int -> List String -> Float -> List (Svg msg) -> List (Svg msg)
+groupItems rotation count colors scale items =
     List.range 0 (count - 1)
         |> List.map (\i -> ( i, 360 / toFloat count * toFloat i ))
-        |> List.map
-            (\( i, r ) ->
+        |> List.map2
+            (\color ( i, r ) ->
                 g
-                    [ transform
+                    [ class color
+                    , transform
                         ("scale(0.5 0.5) "
                             ++ "translate(0 -100) "
                             ++ "rotate("
@@ -84,6 +101,7 @@ groupItems rotation count scale items =
                     ]
                     items
             )
+            (List.Extra.cycle count colors)
 
 
 pointOnCircle : Int -> Int -> ( Float, Float )
@@ -95,9 +113,17 @@ pointOnCircle total index =
     ( cos radius, sin radius )
 
 
-drawLine : Float -> Float -> Float -> Float -> Svg msg
-drawLine x1_ y1_ x2_ y2_ =
-    line [ x1 (String.fromFloat x1_), y1 (String.fromFloat y1_), x2 (String.fromFloat x2_), y2 (String.fromFloat y2_), stroke "black" ] []
+
+--drawLine : Float -> Float -> Float -> Float -> Svg msg
+--drawLine x1_ y1_ x2_ y2_ =
+--    line
+--        [ x1 (String.fromFloat x1_)
+--        , y1 (String.fromFloat y1_)
+--        , x2 (String.fromFloat x2_)
+--        , y2 (String.fromFloat y2_)
+--        --, stroke "black"
+--        ]
+--        []
 
 
 pointsToString : List ( Float, Float ) -> String

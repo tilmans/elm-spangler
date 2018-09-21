@@ -4,6 +4,8 @@ import Array
 import Browser
 import Browser.Events
 import Browser.Navigation
+import Color exposing (Color)
+import Colors
 import Fractal
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -19,6 +21,8 @@ type alias Model =
     , active : ActiveItem
     , animated : List Int
     , time : Float
+    , speed : Float
+    , colors : List String
     }
 
 
@@ -48,6 +52,9 @@ type Key
     | Up
     | Down
     | AnimateToggle
+    | Back
+    | Pause
+    | Forward
     | Other
 
 
@@ -62,7 +69,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Tick delta ->
-            ( { model | time = model.time + delta }, Cmd.none )
+            ( { model | time = model.time + (delta * model.speed) }, Cmd.none )
 
         UrlChange url ->
             let
@@ -228,7 +235,16 @@ update msg model =
                                             model.animated
                             }
 
-                        _ ->
+                        Back ->
+                            { model | speed = model.speed - 1 }
+
+                        Forward ->
+                            { model | speed = model.speed + 1 }
+
+                        Pause ->
+                            { model | speed = 0 }
+
+                        Other ->
                             model
             in
             ( newModel, setURL newModel )
@@ -251,7 +267,15 @@ view model =
                 [ div [ class "controls" ] (inputControls model)
                 ]
             , div [ class "fractal-container" ]
-                [ div [ class "fractal" ] [ Fractal.draw model.time model.animated model.steps model.points (Array.toList model.repeats) ]
+                [ div [ class "fractal" ]
+                    [ Fractal.draw
+                        model.time
+                        model.animated
+                        model.steps
+                        model.points
+                        (Array.toList model.repeats)
+                        model.colors
+                    ]
                 ]
             ]
         ]
@@ -274,6 +298,8 @@ main =
                   , active = Steps
                   , animated = []
                   , time = 0
+                  , speed = 1
+                  , colors = Colors.phoenix
                   }
                 , Cmd.none
                 )
@@ -346,6 +372,15 @@ toKey string =
 
         "ArrowDown" ->
             Down
+
+        "j" ->
+            Back
+
+        "k" ->
+            Pause
+
+        "l" ->
+            Forward
 
         _ ->
             Other

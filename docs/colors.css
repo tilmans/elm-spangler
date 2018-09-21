@@ -1,0 +1,23 @@
+line {
+	stroke: white;
+}
+
+.one > line {
+	stroke: rgb(56,32,64);
+}
+
+.two > line {
+	stroke: rgb(89,40,89);
+}
+
+.three > line {
+	stroke: rgb(204,31,88);
+}
+
+.four > line {
+	stroke: rgb(255,96,64);
+}
+
+.five > line {
+	stroke: rgb(255,210,77);
+}
