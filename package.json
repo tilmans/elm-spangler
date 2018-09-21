@@ -1,6 +1,6 @@
 {
 	"scripts": {
-		"start": "elm-live --dir=docs --output=docs/index.js --debug src/Main.elm",
+		"start": "elm-live --dir=docs --output=docs/index.js src/Main.elm",
 		"build": "elm make --optimize --output=docs/index.js src/Main.elm && uglifyjs -o docs/index.js --compress --mangle -- docs/index.js"
 	},
 	"devDependencies": {

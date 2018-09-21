@@ -22,17 +22,7 @@ html,body {
 	display: flex;
 }
 
-.active-control {
-	width: 40px;
-	height: 45px;
-	margin: 5px;
-	background: lightgrey;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-}
-
-.passive-control {
+.control {
 	width: 40px;
 	height: 45px;
 	margin: 5px;
@@ -40,6 +30,14 @@ html,body {
 	display: flex;
 	justify-content: center;
 	align-items: center;
+}
+
+.active {
+	background: lightgrey;
+}
+
+.animated {
+	background: red;
 }
 
 .control-text {

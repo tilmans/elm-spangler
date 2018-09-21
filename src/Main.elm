@@ -17,6 +17,7 @@ type alias Model =
     , points : Int
     , repeats : Array.Array Int
     , active : ActiveItem
+    , animated : List Int
     , time : Float
     }
 
@@ -46,6 +47,7 @@ type Key
     | Right
     | Up
     | Down
+    | AnimateToggle
     | Other
 
 
@@ -211,6 +213,21 @@ update msg model =
                                 New ->
                                     model
 
+                        AnimateToggle ->
+                            { model
+                                | animated =
+                                    case model.active of
+                                        Repeat index ->
+                                            if List.member index model.animated then
+                                                List.filter (\i -> i /= index) model.animated
+
+                                            else
+                                                index :: model.animated
+
+                                        _ ->
+                                            model.animated
+                            }
+
                         _ ->
                             model
             in
@@ -234,7 +251,7 @@ view model =
                 [ div [ class "controls" ] (inputControls model)
                 ]
             , div [ class "fractal-container" ]
-                [ div [ class "fractal" ] [ Fractal.draw model.time 2 model.steps model.points (Array.toList model.repeats) ]
+                [ div [ class "fractal" ] [ Fractal.draw model.time model.animated model.steps model.points (Array.toList model.repeats) ]
                 ]
             ]
         ]
@@ -250,7 +267,16 @@ main =
                     params =
                         parametersFromUrl url
                 in
-                ( Model key params.steps params.points params.repeats Steps 0, Cmd.none )
+                ( { key = key
+                  , steps = params.steps
+                  , points = params.points
+                  , repeats = params.repeats
+                  , active = Steps
+                  , animated = []
+                  , time = 0
+                  }
+                , Cmd.none
+                )
         , view = view
         , update = update
         , subscriptions = subscriptions
@@ -263,16 +289,11 @@ main =
 -- UI Functions
 
 
-control : Bool -> Maybe Int -> Html Msg
-control active value =
+control : Bool -> Bool -> Maybe Int -> Html Msg
+control active animated value =
     div
-        [ class
-            (if active then
-                "active-control"
-
-             else
-                "passive-control"
-            )
+        [ class "control"
+        , classList [ ( "active", active ), ( "animated", animated ) ]
         ]
         [ div [ class "control-text" ]
             [ case value of
@@ -287,11 +308,17 @@ control active value =
 
 inputControls : Model -> List (Html Msg)
 inputControls model =
-    [ control (model.active == Steps) (Just model.steps)
-    , control (model.active == Points) (Just model.points)
+    [ control (model.active == Steps) False (Just model.steps)
+    , control (model.active == Points) False (Just model.points)
     ]
-        ++ List.indexedMap (\index value -> control (valueIsRepeat model.active index) (Just value)) (Array.toList model.repeats)
-        ++ [ control (model.active == New) Nothing ]
+        ++ List.indexedMap
+            (\index value ->
+                control (valueIsRepeat model.active index)
+                    (List.member index model.animated)
+                    (Just value)
+            )
+            (Array.toList model.repeats)
+        ++ [ control (model.active == New) False Nothing ]
 
 
 
@@ -305,6 +332,9 @@ keyDecoder =
 toKey : String -> Key
 toKey string =
     case string of
+        "Enter" ->
+            AnimateToggle
+
         "ArrowLeft" ->
             Left
 

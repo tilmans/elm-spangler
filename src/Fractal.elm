@@ -5,8 +5,8 @@ import Svg exposing (..)
 import Svg.Attributes exposing (..)
 
 
-draw : Float -> Int -> Int -> Int -> List Int -> Svg msg
-draw time rotateOn step points repeats =
+draw : Float -> List Int -> Int -> Int -> List Int -> Svg msg
+draw time animated step points repeats =
     let
         scale =
             100
@@ -22,8 +22,21 @@ draw time rotateOn step points repeats =
                 |> List.map (\( x, y ) -> ( x * scale, y * scale * -1 ))
                 |> drawPoints step
 
-        items =
-            List.foldl (\c svg -> groupItems c scale svg) lines repeats
+        ( counter, items ) =
+            List.foldl
+                (\c ( count, svg ) ->
+                    let
+                        animOffset =
+                            if List.member count animated then
+                                time / 10
+
+                            else
+                                0
+                    in
+                    ( count + 1, groupItems animOffset c scale svg )
+                )
+                ( 0, lines )
+                repeats
     in
     svg [ width "500", height "500", viewBox "-105 -105 210 210" ]
         (circle [ x "0", y "0", r "100", stroke "none", fill "none" ] [] :: items)
@@ -54,8 +67,8 @@ wrappingGet position array =
         |> Maybe.withDefault ( 0, 0 )
 
 
-groupItems : Int -> Float -> List (Svg msg) -> List (Svg msg)
-groupItems count scale items =
+groupItems : Float -> Int -> Float -> List (Svg msg) -> List (Svg msg)
+groupItems rotation count scale items =
     List.range 0 (count - 1)
         |> List.map (\i -> ( i, 360 / toFloat count * toFloat i ))
         |> List.map
@@ -65,7 +78,7 @@ groupItems count scale items =
                         ("scale(0.5 0.5) "
                             ++ "translate(0 -100) "
                             ++ "rotate("
-                            ++ String.fromFloat r
+                            ++ String.fromFloat (r + rotation)
                             ++ " 0 100)"
                         )
                     ]
