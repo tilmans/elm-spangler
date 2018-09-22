@@ -1,4 +1,4 @@
-module ParamParser exposing (Parameter, Parameters, parse)
+module ParamParser exposing (Parameter, Parameters, parse, toString)
 
 import Parser exposing (..)
 
@@ -59,3 +59,19 @@ parameter =
         )
         |= int
         |= oneOf [ succeed Just |. symbol "|" |= float, succeed Nothing |. end ]
+
+
+toString : Parameters -> String
+toString params =
+    List.map
+        (\param ->
+            String.fromInt param.steps
+                ++ (if param.speed > 0 then
+                        "|" ++ String.fromFloat param.speed
+
+                    else
+                        ""
+                   )
+        )
+        params
+        |> String.join ","
