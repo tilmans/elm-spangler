@@ -1,13 +1,14 @@
 module Fractal exposing (draw)
 
 import Array
+import Dict exposing (Dict)
 import List.Extra
 import Svg exposing (Svg, circle, g, line, svg)
 import Svg.Attributes exposing (..)
 
 
-draw : Float -> List Int -> Int -> Int -> List Int -> List String -> Svg msg
-draw time animated step points repeats colors =
+draw : Dict Int Float -> Int -> Int -> List Int -> List String -> Svg msg
+draw time step points repeats colors =
     let
         scale =
             100
@@ -28,11 +29,7 @@ draw time animated step points repeats colors =
                 (\c ( count, svg ) ->
                     let
                         rotation =
-                            if List.member count animated then
-                                time / 10
-
-                            else
-                                0
+                            Dict.get count time |> Maybe.withDefault 0
 
                         colors_ =
                             if count == 0 then

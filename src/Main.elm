@@ -6,6 +6,7 @@ import Browser.Events
 import Browser.Navigation
 import Color exposing (Color)
 import Colors
+import Dict exposing (Dict)
 import Fractal
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -19,10 +20,10 @@ type alias Model =
     , points : Int
     , repeats : Array.Array Int
     , active : ActiveItem
-    , animated : List Int
-    , time : Float
-    , speed : Float
+    , speed : Dict Int Float
+    , time : Dict Int Float
     , colors : List String
+    , colored : Int
     }
 
 
@@ -51,7 +52,6 @@ type Key
     | Right
     | Up
     | Down
-    | AnimateToggle
     | Back
     | Pause
     | Forward
@@ -69,7 +69,20 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Tick delta ->
-            ( { model | time = model.time + (delta * model.speed) }, Cmd.none )
+            ( { model
+                | time =
+                    Dict.map
+                        (\k speed ->
+                            let
+                                time =
+                                    Dict.get k model.time |> Maybe.withDefault 0
+                            in
+                            time + delta * speed
+                        )
+                        model.speed
+              }
+            , Cmd.none
+            )
 
         UrlChange url ->
             let
@@ -220,29 +233,52 @@ update msg model =
                                 New ->
                                     model
 
-                        AnimateToggle ->
-                            { model
-                                | animated =
-                                    case model.active of
-                                        Repeat index ->
-                                            if List.member index model.animated then
-                                                List.filter (\i -> i /= index) model.animated
-
-                                            else
-                                                index :: model.animated
-
-                                        _ ->
-                                            model.animated
-                            }
-
                         Back ->
-                            { model | speed = model.speed - 1 }
+                            case model.active of
+                                Repeat index ->
+                                    let
+                                        orgSpeed : Float
+                                        orgSpeed =
+                                            Dict.get index model.speed |> Maybe.withDefault 0
+
+                                        speed : Dict Int Float
+                                        speed =
+                                            Dict.insert index (orgSpeed - 0.01) model.speed
+                                    in
+                                    { model | speed = speed }
+
+                                _ ->
+                                    model
 
                         Forward ->
-                            { model | speed = model.speed + 1 }
+                            case model.active of
+                                Repeat index ->
+                                    let
+                                        orgSpeed : Float
+                                        orgSpeed =
+                                            Dict.get index model.speed |> Maybe.withDefault 0
+
+                                        speed : Dict Int Float
+                                        speed =
+                                            Dict.insert index (orgSpeed + 0.01) model.speed
+                                    in
+                                    { model | speed = speed }
+
+                                _ ->
+                                    model
 
                         Pause ->
-                            { model | speed = 0 }
+                            case model.active of
+                                Repeat index ->
+                                    let
+                                        speed : Dict Int Float
+                                        speed =
+                                            Dict.insert index 0 model.speed
+                                    in
+                                    { model | speed = speed }
+
+                                _ ->
+                                    model
 
                         Other ->
                             model
@@ -270,7 +306,6 @@ view model =
                 [ div [ class "fractal" ]
                     [ Fractal.draw
                         model.time
-                        model.animated
                         model.steps
                         model.points
                         (Array.toList model.repeats)
@@ -279,6 +314,20 @@ view model =
                 ]
             ]
         ]
+    }
+
+
+initModel : Browser.Navigation.Key -> UrlParameters -> Model
+initModel key params =
+    { key = key
+    , steps = params.steps
+    , points = params.points
+    , repeats = params.repeats
+    , active = Steps
+    , time = Dict.empty
+    , speed = Dict.empty
+    , colors = Colors.phoenix
+    , colored = 0
     }
 
 
@@ -291,16 +340,7 @@ main =
                     params =
                         parametersFromUrl url
                 in
-                ( { key = key
-                  , steps = params.steps
-                  , points = params.points
-                  , repeats = params.repeats
-                  , active = Steps
-                  , animated = []
-                  , time = 0
-                  , speed = 1
-                  , colors = Colors.phoenix
-                  }
+                ( initModel key params
                 , Cmd.none
                 )
         , view = view
@@ -315,11 +355,11 @@ main =
 -- UI Functions
 
 
-control : Bool -> Bool -> Maybe Int -> Html Msg
-control active animated value =
+control : Bool -> Float -> Maybe Int -> Html Msg
+control active speed value =
     div
         [ class "control"
-        , classList [ ( "active", active ), ( "animated", animated ) ]
+        , classList [ ( "active", active ) ]
         ]
         [ div [ class "control-text" ]
             [ case value of
@@ -334,17 +374,17 @@ control active animated value =
 
 inputControls : Model -> List (Html Msg)
 inputControls model =
-    [ control (model.active == Steps) False (Just model.steps)
-    , control (model.active == Points) False (Just model.points)
+    [ control (model.active == Steps) 0 (Just model.steps)
+    , control (model.active == Points) 0 (Just model.points)
     ]
         ++ List.indexedMap
             (\index value ->
                 control (valueIsRepeat model.active index)
-                    (List.member index model.animated)
+                    (Dict.get index model.speed |> Maybe.withDefault 0)
                     (Just value)
             )
             (Array.toList model.repeats)
-        ++ [ control (model.active == New) False Nothing ]
+        ++ [ control (model.active == New) 0 Nothing ]
 
 
 
@@ -358,9 +398,8 @@ keyDecoder =
 toKey : String -> Key
 toKey string =
     case string of
-        "Enter" ->
-            AnimateToggle
-
+        --"Enter" ->
+        --    AnimateToggle
         "ArrowLeft" ->
             Left
 
