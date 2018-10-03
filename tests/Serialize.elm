@@ -117,6 +117,15 @@ suite =
 
                         Ok result ->
                             Expect.true "Should have failed" False
+            , test "OMG URL" <|
+                \_ ->
+                    case parse "1,3,7%7C21,8%7C4,6%7C-4" Nothing of
+                        Err err ->
+                            Expect.true err False
+
+                        Ok result ->
+                            Expect.equal result
+                                { steps = 1, points = 3, repeats = Array.fromList [ ( 7, 0, Types.Forward 21 ), ( 8, 0, Types.Forward 4 ), ( 6, 0, Types.Backward 4 ) ] }
             ]
         , describe "Construct String"
             [ test "one with speed" <|

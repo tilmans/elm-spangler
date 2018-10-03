@@ -3,13 +3,17 @@ module ParamParser exposing (parse, toString)
 import Array
 import Parser exposing (..)
 import Types exposing (Parameters, Speed(..))
+import Url
 
 
 parse : String -> Maybe Parameters -> Result String Parameters
 parse string state =
     let
+        decoded =
+            Url.percentDecode string |> Maybe.withDefault ""
+
         segments =
-            String.split "," string
+            String.split "," decoded
                 |> Array.fromList
 
         stepSegment =
