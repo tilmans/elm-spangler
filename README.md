@@ -21,4 +21,8 @@ Inputs:
 - [ ] Add export
 - [ ] Add onion skinning
 
-[Here is an example](https://tilmans.github.io/elm-spangler/#3,5,8|18,5|14,6|-5)
+![3,5,8|18,5|14,6|-5](./anim2.gif)
+[3,5,8|18,5|14,6|-5](https://tilmans.github.io/elm-spangler/#3,5,8|18,5|14,6|-5)
+
+![1,2,10|13,2|34,13|-8](./anim1.gif)
+[1,2,10|13,2|34,13|-8](https://tilmans.github.io/elm-spangler/#1,2,10|13,2|34,13|-8)
