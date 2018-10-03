@@ -10,9 +10,9 @@ Inputs:
 3) and after: The number of times to repeat the previous item.
 
 ## Controls
-Left/Right: Navigate between the boxes
-Up/Down: Increment/Decrement. Setting the last segment to 0 will remove it. Increment the empty segment will add a new one
-J/K/L: Animate Forward/Backward. K will stop the animation. Only works on the repeats, not on the first two
+* Left/Right: Navigate between the boxes
+* Up/Down: Increment/Decrement. Setting the last segment to 0 will remove it. Increment the empty segment will add a new one
+* J/K/L: Animate Forward/Backward. K will stop the animation. Only works on the repeats, not on the first two
 
 ## Todo
 - [x] Add coloring
