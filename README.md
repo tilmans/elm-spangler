@@ -21,4 +21,4 @@ Inputs:
 - [ ] Add export
 - [ ] Add onion skinning
 
-[Here is an example](https://tilmans.github.io/elm-spangler/#1,3,7|21,8|4,6|-4)
+[Here is an example](https://tilmans.github.io/elm-spangler/#3,5,8|18,5|14,6|-5)
