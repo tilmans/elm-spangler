@@ -5,32 +5,32 @@ import Dict exposing (Dict)
 import List.Extra
 import Svg exposing (Svg, circle, g, line, svg)
 import Svg.Attributes exposing (..)
+import Types exposing (Parameters)
 
 
-draw : Dict Int Float -> Int -> Int -> List Int -> List String -> Svg msg
-draw time step points repeats colors =
+draw : Parameters -> List String -> Svg msg
+draw parameters colors =
     let
         scale =
             100
 
         segments =
-            2 * pi / toFloat points
+            2 * pi / toFloat parameters.points
 
         lines =
-            List.range 0 (points - 1)
+            List.range 0 (parameters.points - 1)
                 |> List.map toFloat
                 |> List.map (\m -> ( cos ((segments * (-1 * m)) + pi / 2), sin ((segments * (-1 * m)) + pi / 2) ))
                 |> List.reverse
                 |> List.map (\( x, y ) -> ( x * scale, y * scale * -1 ))
-                |> drawPoints step
+                |> drawPoints parameters.steps
 
         ( counter, items ) =
-            List.foldl
-                (\c ( count, svg ) ->
+            Array.foldl
+                (\( steps, time, _ ) ( count, svg ) ->
                     let
-                        rotation =
-                            Dict.get count time |> Maybe.withDefault 0
-
+                        --rotation =
+                        --    Dict.get count time |> Maybe.withDefault 0
                         colors_ =
                             if count == 0 then
                                 colors
@@ -38,10 +38,10 @@ draw time step points repeats colors =
                             else
                                 [ "default" ]
                     in
-                    ( count + 1, groupItems rotation c colors_ scale svg )
+                    ( count + 1, groupItems time steps colors_ scale svg )
                 )
                 ( 0, lines )
-                repeats
+                parameters.repeats
     in
     svg [ width "500", height "500", viewBox "-105 -105 210 210" ]
         (circle [ x "0", y "0", r "100", stroke "none", fill "none" ] [] :: items)

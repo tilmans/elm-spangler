@@ -11,26 +11,26 @@ import Fractal
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Json.Decode as Decode
+import ParamParser as Parser
+import Types exposing (Parameters, Speed)
 import Url exposing (Url)
+
+
+default =
+    { steps = 1, points = 3, repeats = Array.fromList [ ( 3, 1, Types.Stopped ) ] }
 
 
 type alias Model =
     { key : Browser.Navigation.Key
-    , steps : Int
-    , points : Int
-    , repeats : Array.Array Int
+    , parameters : Parameters
     , active : ActiveItem
-    , speed : Dict Int Float
-    , time : Dict Int Float
     , colors : List String
     , colored : Int
     }
 
 
 type Msg
-    = SetPoints Float
-    | SetRepeat Int Float
-    | KeyEvent Key
+    = KeyEvent Key
     | UrlChange Url
     | UrlRequest
     | Tick Float
@@ -58,53 +58,59 @@ type Key
     | Other
 
 
-type alias UrlParameters =
-    { steps : Int
-    , points : Int
-    , repeats : Array.Array Int
-    }
+type SpeedChange
+    = Increment
+    | Decrement
+    | Stop
+
+
+deltaFraction =
+    100
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Tick delta ->
-            ( { model
-                | time =
-                    Dict.map
-                        (\k speed ->
+            let
+                newRepeats =
+                    Array.map
+                        (\( repeat, time, speed ) ->
                             let
-                                time =
-                                    Dict.get k model.time |> Maybe.withDefault 0
+                                newTime =
+                                    case speed of
+                                        Types.Forward s ->
+                                            time + delta * toFloat s / deltaFraction
+
+                                        Types.Backward s ->
+                                            time - delta * toFloat s / deltaFraction
+
+                                        Types.Stopped ->
+                                            time
                             in
-                            time + delta * speed
+                            ( repeat, newTime, speed )
                         )
-                        model.speed
+                        model.parameters.repeats
+
+                oldParameters =
+                    model.parameters
+
+                newParameters =
+                    { oldParameters | repeats = newRepeats }
+            in
+            ( { model
+                | parameters = newParameters
               }
             , Cmd.none
             )
 
         UrlChange url ->
-            let
-                params =
-                    parametersFromUrl url
-            in
-            ( { model | steps = params.steps, points = params.points, repeats = params.repeats }, Cmd.none )
+            ( { model | parameters = parametersFromUrl url (Just model.parameters) }
+            , Cmd.none
+            )
 
         UrlRequest ->
             ( model, Cmd.none )
-
-        SetPoints p ->
-            ( { model | points = floor p }, Cmd.none )
-
-        SetRepeat position value ->
-            ( { model
-                | repeats =
-                    model.repeats
-                        |> Array.set position (floor value)
-              }
-            , Cmd.none
-            )
 
         KeyEvent key ->
             let
@@ -128,11 +134,11 @@ update msg model =
                                                 Points
 
                                         New ->
-                                            if Array.length model.repeats == 0 then
+                                            if Array.length model.parameters.repeats == 0 then
                                                 Points
 
                                             else
-                                                Repeat (Array.length model.repeats - 1)
+                                                Repeat (Array.length model.parameters.repeats - 1)
                             }
 
                         Right ->
@@ -143,14 +149,14 @@ update msg model =
                                             Points
 
                                         Points ->
-                                            if Array.length model.repeats == 0 then
+                                            if Array.length model.parameters.repeats == 0 then
                                                 New
 
                                             else
                                                 Repeat 0
 
                                         Repeat pos ->
-                                            if pos >= (Array.length model.repeats - 1) then
+                                            if pos >= (Array.length model.parameters.repeats - 1) then
                                                 New
 
                                             else
@@ -163,59 +169,104 @@ update msg model =
                         Up ->
                             case model.active of
                                 Steps ->
+                                    let
+                                        oldP =
+                                            model.parameters
+
+                                        newP =
+                                            { oldP | steps = incrementWithLimit oldP.steps }
+                                    in
                                     { model
-                                        | steps = incrementWithLimit model.steps
+                                        | parameters = newP
                                     }
 
                                 Points ->
+                                    let
+                                        oldP =
+                                            model.parameters
+
+                                        newP =
+                                            { oldP | points = incrementWithLimit oldP.points }
+                                    in
                                     { model
-                                        | points = incrementWithLimit model.points
+                                        | parameters = newP
                                     }
 
                                 Repeat index ->
                                     let
-                                        current =
-                                            Array.get index model.repeats
-                                                |> Maybe.withDefault 0
+                                        oldP =
+                                            model.parameters
+
+                                        ( repeat, time, speed ) =
+                                            model.parameters.repeats
+                                                |> Array.get index
+                                                |> Maybe.withDefault ( 0, 0, Types.Stopped )
 
                                         add =
-                                            incrementWithLimit current
+                                            incrementWithLimit repeat
 
                                         new =
-                                            Array.set index add model.repeats
+                                            Array.set index ( add, time, speed ) model.parameters.repeats
+
+                                        newP =
+                                            { oldP | repeats = new }
                                     in
-                                    { model | repeats = new }
+                                    { model | parameters = newP }
 
                                 New ->
+                                    let
+                                        oldP =
+                                            model.parameters
+
+                                        newP =
+                                            { oldP
+                                                | repeats =
+                                                    Array.push ( 1, 0, Types.Stopped )
+                                                        oldP.repeats
+                                            }
+                                    in
                                     { model
-                                        | repeats = Array.push 1 model.repeats
-                                        , active = Repeat (Array.length model.repeats)
+                                        | parameters = newP
+                                        , active = Repeat (Array.length newP.repeats - 1)
                                     }
 
                         Down ->
                             case model.active of
                                 Steps ->
-                                    { model
-                                        | steps = decrementWithLimit model.steps
-                                    }
+                                    let
+                                        oldP =
+                                            model.parameters
+
+                                        newP =
+                                            { oldP | steps = decrementWithLimit oldP.steps }
+                                    in
+                                    { model | parameters = newP }
 
                                 Points ->
-                                    { model
-                                        | points = decrementWithLimit model.points
-                                    }
+                                    let
+                                        oldP =
+                                            model.parameters
+
+                                        newP =
+                                            { oldP | points = decrementWithLimit oldP.points }
+                                    in
+                                    { model | parameters = newP }
 
                                 Repeat index ->
                                     let
-                                        lastIndex =
-                                            Array.length model.repeats - 1
+                                        oldP =
+                                            model.parameters
 
-                                        current =
-                                            Array.get index model.repeats
-                                                |> Maybe.withDefault 0
+                                        lastIndex =
+                                            Array.length oldP.repeats - 1
+
+                                        ( steps, time, speed ) =
+                                            Array.get index oldP.repeats
+                                                |> Maybe.withDefault ( 0, 0, Types.Stopped )
 
                                         ( newRepeat, newPosition ) =
-                                            if current < 2 && index == lastIndex then
-                                                ( Array.slice 0 lastIndex model.repeats
+                                            if steps == 1 && index == lastIndex then
+                                                ( Array.slice 0 lastIndex oldP.repeats
                                                 , if lastIndex - 1 >= 0 then
                                                     Repeat (lastIndex - 1)
 
@@ -224,11 +275,14 @@ update msg model =
                                                 )
 
                                             else
-                                                ( Array.set index (decrementWithLimit current) model.repeats
+                                                ( Array.set index ( decrementWithLimit steps, time, speed ) oldP.repeats
                                                 , Repeat index
                                                 )
+
+                                        newP =
+                                            { oldP | repeats = newRepeat }
                                     in
-                                    { model | repeats = newRepeat, active = newPosition }
+                                    { model | parameters = newP, active = newPosition }
 
                                 New ->
                                     model
@@ -236,16 +290,10 @@ update msg model =
                         Back ->
                             case model.active of
                                 Repeat index ->
-                                    let
-                                        orgSpeed : Float
-                                        orgSpeed =
-                                            Dict.get index model.speed |> Maybe.withDefault 0
-
-                                        speed : Dict Int Float
-                                        speed =
-                                            Dict.insert index (orgSpeed - 0.01) model.speed
-                                    in
-                                    { model | speed = speed }
+                                    { model
+                                        | parameters =
+                                            changeSpeed model.parameters index Decrement
+                                    }
 
                                 _ ->
                                     model
@@ -253,16 +301,10 @@ update msg model =
                         Forward ->
                             case model.active of
                                 Repeat index ->
-                                    let
-                                        orgSpeed : Float
-                                        orgSpeed =
-                                            Dict.get index model.speed |> Maybe.withDefault 0
-
-                                        speed : Dict Int Float
-                                        speed =
-                                            Dict.insert index (orgSpeed + 0.01) model.speed
-                                    in
-                                    { model | speed = speed }
+                                    { model
+                                        | parameters =
+                                            changeSpeed model.parameters index Increment
+                                    }
 
                                 _ ->
                                     model
@@ -270,12 +312,10 @@ update msg model =
                         Pause ->
                             case model.active of
                                 Repeat index ->
-                                    let
-                                        speed : Dict Int Float
-                                        speed =
-                                            Dict.insert index 0 model.speed
-                                    in
-                                    { model | speed = speed }
+                                    { model
+                                        | parameters =
+                                            changeSpeed model.parameters index Stop
+                                    }
 
                                 _ ->
                                     model
@@ -284,6 +324,55 @@ update msg model =
                             model
             in
             ( newModel, setURL newModel )
+
+
+changeSpeed : Parameters -> Int -> SpeedChange -> Parameters
+changeSpeed parameters index delta =
+    let
+        ( steps, time, speed ) =
+            Array.get index parameters.repeats |> Maybe.withDefault ( 0, 0, Types.Stopped )
+
+        newRepeats =
+            Array.set index
+                ( steps
+                , time
+                , case delta of
+                    Increment ->
+                        case speed of
+                            Types.Forward s ->
+                                Types.Forward (s + 1)
+
+                            Types.Backward s ->
+                                if s == 1 then
+                                    Types.Stopped
+
+                                else
+                                    Types.Backward (s - 1)
+
+                            Types.Stopped ->
+                                Types.Forward 1
+
+                    Decrement ->
+                        case speed of
+                            Types.Forward s ->
+                                if s == 1 then
+                                    Types.Stopped
+
+                                else
+                                    Types.Forward (s - 1)
+
+                            Types.Backward s ->
+                                Types.Backward (s + 1)
+
+                            Types.Stopped ->
+                                Types.Backward 1
+
+                    Stop ->
+                        Types.Stopped
+                )
+                parameters.repeats
+    in
+    { parameters | repeats = newRepeats }
 
 
 subscriptions : Model -> Sub Msg
@@ -296,7 +385,7 @@ subscriptions model =
 
 view : Model -> Browser.Document Msg
 view model =
-    { title = stringForParams model
+    { title = Parser.toString model.parameters
     , body =
         [ div [ class "main" ]
             [ div [ class "controls-container" ]
@@ -305,10 +394,7 @@ view model =
             , div [ class "fractal-container" ]
                 [ div [ class "fractal" ]
                     [ Fractal.draw
-                        model.time
-                        model.steps
-                        model.points
-                        (Array.toList model.repeats)
+                        model.parameters
                         model.colors
                     ]
                 ]
@@ -317,15 +403,11 @@ view model =
     }
 
 
-initModel : Browser.Navigation.Key -> UrlParameters -> Model
-initModel key params =
+initModel : Browser.Navigation.Key -> Parameters -> Model
+initModel key parameters =
     { key = key
-    , steps = params.steps
-    , points = params.points
-    , repeats = params.repeats
+    , parameters = parameters
     , active = Steps
-    , time = Dict.empty
-    , speed = Dict.empty
     , colors = Colors.phoenix
     , colored = 0
     }
@@ -338,7 +420,7 @@ main =
             \flags url key ->
                 let
                     params =
-                        parametersFromUrl url
+                        parametersFromUrl url Nothing
                 in
                 ( initModel key params
                 , Cmd.none
@@ -355,7 +437,7 @@ main =
 -- UI Functions
 
 
-control : Bool -> Float -> Maybe Int -> Html Msg
+control : Bool -> Speed -> Maybe Int -> Html Msg
 control active speed value =
     div
         [ class "control"
@@ -374,17 +456,21 @@ control active speed value =
 
 inputControls : Model -> List (Html Msg)
 inputControls model =
-    [ control (model.active == Steps) 0 (Just model.steps)
-    , control (model.active == Points) 0 (Just model.points)
+    let
+        repeatControls =
+            Array.indexedMap
+                (\index ( steps, time, speed ) ->
+                    control (valueIsRepeat model.active index)
+                        speed
+                        (Just steps)
+                )
+                model.parameters.repeats
+    in
+    [ control (model.active == Steps) Types.Stopped (Just model.parameters.steps)
+    , control (model.active == Points) Types.Stopped (Just model.parameters.points)
     ]
-        ++ List.indexedMap
-            (\index value ->
-                control (valueIsRepeat model.active index)
-                    (Dict.get index model.speed |> Maybe.withDefault 0)
-                    (Just value)
-            )
-            (Array.toList model.repeats)
-        ++ [ control (model.active == New) 0 Nothing ]
+        ++ (repeatControls |> Array.toList)
+        ++ [ control (model.active == New) Types.Stopped Nothing ]
 
 
 
@@ -427,7 +513,7 @@ toKey string =
 
 setURL : Model -> Cmd msg
 setURL model =
-    Browser.Navigation.replaceUrl model.key ("#" ++ stringForParams model)
+    Browser.Navigation.replaceUrl model.key ("#" ++ Parser.toString model.parameters)
 
 
 incrementWithLimit value =
@@ -456,33 +542,16 @@ valueIsRepeat expected current =
             False
 
 
-stringForParams : Model -> String
-stringForParams model =
-    String.fromInt model.steps
-        ++ ","
-        ++ String.fromInt model.points
-        ++ Array.foldl (\i a -> a ++ "," ++ String.fromInt i) "" model.repeats
-
-
-parametersFromUrl : Url -> UrlParameters
-parametersFromUrl url =
+parametersFromUrl : Url -> Maybe Parameters -> Parameters
+parametersFromUrl url state =
     case url.fragment of
         Nothing ->
-            { steps = 1, points = 3, repeats = Array.fromList [] }
+            default
 
         Just fragment ->
-            let
-                parts =
-                    Array.fromList <| String.split "," fragment
+            case Parser.parse fragment state of
+                Err _ ->
+                    default
 
-                steps =
-                    Array.get 0 parts |> Maybe.withDefault "1" |> String.toInt |> Maybe.withDefault 1
-
-                points =
-                    Array.get 1 parts |> Maybe.withDefault "3" |> String.toInt |> Maybe.withDefault 3
-
-                repeats =
-                    Array.slice 2 (Array.length parts) parts
-                        |> Array.map (String.toInt >> Maybe.withDefault 1)
-            in
-            { steps = steps, points = points, repeats = repeats }
+                Ok result ->
+                    result
