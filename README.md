@@ -1,6 +1,12 @@
 # elm-spangler
 This is an Elm implementation based on [Spangler](https://github.com/smurp/spangler_js/)
 
+![3,5,8|18,5|14,6|-5](./docs/anim2.gif)  
+[3,5,8|18,5|14,6|-5](https://tilmans.github.io/elm-spangler/#3,5,8|18,5|14,6|-5)
+
+![1,2,10|13,2|34,13|-8](./docs/anim1.gif)  
+[1,2,10|13,2|34,13|-8](https://tilmans.github.io/elm-spangler/#1,2,10|13,2|34,13|-8)
+
 The app generates images based on a set of input parameters which are displayed at the bottom of the screen.
 Use Left/Right to move between the input boxes and Up/Down to increment/decrement.
 
@@ -21,8 +27,3 @@ Inputs:
 - [ ] Add export
 - [ ] Add onion skinning
 
-![3,5,8|18,5|14,6|-5](./anim2.gif)  
-[3,5,8|18,5|14,6|-5](https://tilmans.github.io/elm-spangler/#3,5,8|18,5|14,6|-5)
-
-![1,2,10|13,2|34,13|-8](./anim1.gif)  
-[1,2,10|13,2|34,13|-8](https://tilmans.github.io/elm-spangler/#1,2,10|13,2|34,13|-8)
